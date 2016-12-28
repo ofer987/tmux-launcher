@@ -5,9 +5,9 @@ class Key
 
   def button
     case @ch
-    when 'j'
-        :up
     when 'k'
+        :up
+    when 'j'
       :down
     when 'o'
       :enter

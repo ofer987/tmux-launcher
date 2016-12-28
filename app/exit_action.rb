@@ -1,0 +1,3 @@
+class ExitAction < StandardError
+
+end

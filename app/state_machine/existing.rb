@@ -12,9 +12,9 @@ module StateMachine
     def next_state
     end
 
-    def action(key)
+    def action(window)
       @commander.attach_to(@session_id)
-      throw :quit
+      raise ExitAction.new
     end
   end
 end

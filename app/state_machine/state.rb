@@ -14,7 +14,9 @@ module StateMachine
       @sessions[@selected_index].id
     end
 
-    def action(key)
+    def action(window)
+      key = Key.new(window.getch)
+
       begin
         @next_state =
           case key.button
@@ -23,7 +25,9 @@ module StateMachine
           when :down
             self.class.new(@sessions, selected_index+1)
           when :enter
-            Existing.new(session_id)
+            session_id.nil? ?
+              NewSessionState.new :
+              Existing.new(session_id)
           when :quit
             Quit.new
           else

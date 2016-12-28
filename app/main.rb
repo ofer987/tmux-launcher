@@ -6,58 +6,29 @@ class Main
   def initialize(arg)
     self.arg = arg
 
-    # raise 'Cannot run nested Tmux session' if commander.in_tmux?
-    # RuTui::Theme.use :light
+    raise 'Cannot run nested Tmux session' if commander.in_tmux?
   end
 
   def run
-    state = initial_state
+    Curses.crmode
 
-    catch(:quit) {
+    state = initial_state
+    window = display(state.to_s)
+
+    begin
       loop do
-        state = set_next_screen(state)
+        state = set_next_screen(window, state)
+        window = display(state.to_s)
       end
-    }
-    # if state.is_a? StateMachine::State
-      #   manager.loop({ autofit: true, autodraw: true }) do |key|
-      #     break if key == 'q' || key.ord == 97
-      #     if key == 'o'
-      #       commander.attach_to(state.session_id)
-      #       break
-      #     end
-      #     if key == 'j'
-      #       if i < sessions.count - 1
-      #         i = (i + 1) % sessions.count
-      #       end
-      #     end
-      #     if key == 'k'
-      #       if i > 0
-      #         i = (i - 1) % sessions.count
-      #       end
-      #     end
-      #
-      #     begin
-      #       state = next_state(i)
-      #     rescue => exception
-      #     end
-      #     set_next_screen(state)
-      #   end
-      # else
-      #   set_next_screen(state)
-      #
-      #   str = ""
-      #   manager.loop({ autofit: false, autodraw: true }) do |key|
-      #     if key == ':'
-      #       break
-      #     end
-      #
-      #     set_next_screen(state, str)
-      #     str += key
-      #   end
-      #
-      #   commander.new_session(str)
-      # end
-    # end
+    rescue ExitAction
+      logger.info("Exiting")
+      display("EXIT")
+    rescue => exception
+      logger.error(exception)
+      logger.error(exception.backtrace)
+    ensure
+      Curses.close_screen
+    end
   end
 
   private
@@ -66,34 +37,25 @@ class Main
     StateMachine::State.new(sessions, 0)
   end
 
-  def set_next_screen(state, text = "")
-    Curses.crmode
-    window = Curses::Window.new(0, 0, 0, 0)
-    window.box(?|, ?-)
-    window.setpos(2, 0)
-    window.addstr(state.to_s)
-    window.refresh
-    key = Key.new(window.getch)
-    state.action(key)
+  def display(text)
+    Curses::Window.new(0, 0, 0, 0).tap do |w|
+      # w.box(?|, ?-)
+      w.setpos(2, 0)
+      w.addstr(text.to_s)
+
+      # w.refresh
+    end
+  end
+
+  def set_next_screen(window, state)
+    state.action(window)
     window.close
 
     state.next_state
   end
 
-  def next_state(index)
-    if sessions.empty?
-      StateMachine::NewSessionState.new
-    else
-      StateMachine::State.new(sessions, index)
-    end
-  end
-
-  def manager
-    # RuTui::ScreenManager
-  end
-
   def sessions
-    @sessions ||= commander.sessions
+    @sessions ||= ([NewSession.new] + commander.sessions)
   end
 
   def commander
