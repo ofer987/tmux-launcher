@@ -1,23 +1,42 @@
 module StateMachine
+  # TODO: Rename to Select
   class State
-    def initialize(sessions, selected_index)
-      raise 'no sessions' if sessions.nil? || sessions.empty?
+    attr_reader :selected_index
 
-      @sessions = sessions
+    def initialize(selections, selected_index)
+      raise 'no selections' if selections.nil? || selections.empty?
+
+      @selections = selections
       select(selected_index)
     end
 
-    def session_id
-      @sessions[@selected_index].id
+    def action(window)
+      key = Key.new(window.getch)
+
+      begin
+        @next_state =
+          case key.button
+          when :up
+            self.class.new(@selections, selected_index-1)
+          when :down
+            self.class.new(@selections, selected_index+1)
+          when :enter
+            selected_index == 0 ?
+              NewSessionState.new(selected_index) :
+              Existing.new(selected_index, @selections[selected_index])
+          when :quit
+            Quit.new(selected_index)
+          else
+            self
+          end
+      rescue => exception
+        logger.info(exception)
+        @next_state = self
+      end
     end
 
-    def to_s
-      index = -1
-      @sessions.map do |session|
-        index += 1
-
-        index == @selected_index ?  "> #{session.to_s}" : session.to_s
-      end.join("\n")
+    def next_state
+      @next_state
     end
 
     private
@@ -25,8 +44,8 @@ module StateMachine
     def select(index)
       index = index.to_i
 
-      if index < 0 || index > @sessions.count - 1
-        raise "index should be between 0 and #{@sessions.count-1}"
+      if index < 0 || index > @selections.count - 1
+        raise "index (#{index}) should be between 0 and #{@selections.count}"
       end
 
       @selected_index = index.to_i

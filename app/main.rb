@@ -1,50 +1,96 @@
-require 'rutui'
+require 'curses'
 
 class Main
   attr_accessor :arg
 
-  def sessions
-    @sessions ||= Tmux::Commands.new.sessions
-  end
-
   def initialize(arg)
     self.arg = arg
+
+    raise 'Cannot run nested Tmux session' if commander.in_tmux?
   end
 
   def run
-    manager.add :default, new_screen(0)
-    manager.set_current :default
+    Curses.crmode
 
-    i = 1
-    manager.loop({ autofit: true, autodraw: true }) do |key|
-      break if key == 'q' || key.ord == 97
-      if key == 'o'
-        Tmux::Commands.new.attach(@last_state.session_id)
-        break
+    state = initial_state
+    window = display(state)
+
+    begin
+      loop do
+        state = set_next_screen(window, state)
+        window = display(state)
       end
-
-      manager.add :default, new_screen(i % 2)
-      i += 1
+    rescue ExitAction
+      logger.info("Exiting")
+    rescue Interrupt => exception
+      logger.info("Interrupted: exiting application")
+    rescue => exception
+      logger.error(exception)
+      logger.error(exception.backtrace)
+    ensure
+      Curses.close_screen
     end
   end
 
   private
 
-  def new_screen(index)
-    RuTui::Screen.new.tap do |screen|
-      state = StateMachine::State.new(sessions, index)
+  def initial_state
+    StateMachine::State.new(selections, 0)
+  end
 
-      screen.add_static RuTui::Text.new(
-        x: 0,
-        y: 1,
-        text: state.to_s
-      )
+  def display(state)
+    Curses::Window.new(0, 0, 0, 0).tap do |w|
+      # w.box(?|, ?-)
+      w.attrset(Curses::A_NORMAL)
+      w.setpos(0, 0)
+      w.addstr("TMUX Launcher")
 
-      @last_state = state
+      w.setpos(2, 0)
+
+      i = -1
+      selections.each do |selection|
+        i += 1
+
+        if i == state.selected_index
+          w.attrset(Curses::A_UNDERLINE)
+          w.addstr("> #{selection.to_s}")
+        else
+          w.addstr(selection.to_s)
+        end
+
+        w.addstr("\n") if i < selections.count - 1
+        w.attrset(Curses::A_NORMAL)
+      end
+
+      display_help(w, 2 + selections.count + 3)
+
+      w.setpos(2 + selections.count + 1, 0)
+      w.addstr('Selection: ')
     end
   end
 
-  def manager
-    RuTui::ScreenManager
+  def display_help(window, row)
+    window.setpos(row, 0)
+
+    window.addstr("Help\n")
+    window.addstr("Quit\tq\n")
+    window.addstr("Select\to, ENTER\n")
+    window.addstr("Up\tk, \u2191\n")
+    window.addstr("Down\tj, \u2193")
+  end
+
+  def set_next_screen(window, state)
+    state.action(window)
+    window.close
+
+    state.next_state
+  end
+
+  def selections
+    @selections ||= ([Selections::NewSession.new] + commander.sessions)
+  end
+
+  def commander
+    @commander ||= Tmux::Commands.new
   end
 end
