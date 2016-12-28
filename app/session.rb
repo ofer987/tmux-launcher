@@ -2,7 +2,6 @@ class Session
   attr_reader :id
 
   def initialize(line)
-    puts "#{line}"
     line.match(regex) do |m|
       @id = m[1]
     end

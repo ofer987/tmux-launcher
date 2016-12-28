@@ -1,5 +1,7 @@
 module StateMachine
   class State
+    attr_reader :selected_index
+
     def initialize(sessions, selected_index)
       raise 'no sessions' if sessions.nil? || sessions.empty?
 
@@ -16,7 +18,7 @@ module StateMachine
       @sessions.map do |session|
         index += 1
 
-        index == @selected_index ?  "> #{session.to_s}" : session.to_s
+        index == @selected_index ?  "> #{@selected_index} #{session.to_s}" : session.to_s
       end.join("\n")
     end
 
@@ -26,7 +28,7 @@ module StateMachine
       index = index.to_i
 
       if index < 0 || index > @sessions.count - 1
-        raise "index should be between 0 and #{@sessions.count-1}"
+        raise "index (#{index}) should be between 0 and #{@sessions.count}"
       end
 
       @selected_index = index.to_i
