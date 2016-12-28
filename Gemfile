@@ -2,7 +2,7 @@ source 'https://rubygems.org'
 ruby '2.3.1'
 
 gem 'activesupport'
-gem 'rutui'
+gem 'curses'
 
 group :development do
   gem 'guard-rspec', require: false
