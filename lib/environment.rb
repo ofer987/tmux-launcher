@@ -12,7 +12,7 @@ class Environment
 
     def logger
       return @logger if @logger
-      l = Logger.new("#{File.expand_path(APP_ROOT + '/log')}/app.log")
+      l = Logger.new("#{File.expand_path(APP_ROOT + '/log')}/tmux_launcher.log")
       formatter = proc do |_severity, datetime, _progname, msg|
         "#{datetime}: #{msg}\n"
       end
@@ -47,3 +47,7 @@ end
 Dir["#{Environment::APP_ROOT}/config/initializers/**/*.rb"].sort.each { |f| require f }
 Dir["#{Environment::APP_ROOT}/lib/**/*.rb"].sort.each { |f| require f }
 Dir["#{Environment::APP_ROOT}/app/**/*.rb"].sort.each { |f| require f }
+
+# Create log directory
+log_dir = "#{Environment::APP_ROOT}/log"
+Dir.mkdir(log_dir) unless Dir.exists?(log_dir)

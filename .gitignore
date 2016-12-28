@@ -18,3 +18,5 @@
 /out
 /spec/out
 /node_modules
+
+*.gem
